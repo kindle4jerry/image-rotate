@@ -8,12 +8,26 @@ void c_omp_rotate(CImageBMP &in, double const &rotAngle, CImageBMP &out)
     double dH=(double)in.nHpix;
     double dV=(double)in.nVpix;
     double diagonal=sqrt(dH*dH+dV*dV);
-    double ScaleFactor=(in.nHpix>in.nVpix) ? dV/diagonal : dH/diagonal;
+    double ScaleFactor=(in.nHpix>in.nVpix) ? diagonal/dV : diagonal/dH;
     unsigned h=in.nHpix/2;
     unsigned v=in.nVpix/2;	// integer division
 
     double CRAS =cos(rotAngle)*ScaleFactor;	
     double SRAS =sin(rotAngle)*ScaleFactor;	
+
+    // Initial a matrix for save the input pixel
+    Pixel **PixelMatrixBUFF;
+    PixelMatrixBUFF=new Pixel*[in.nVpix];
+    for(int i=0;i<in.nVpix;i++)
+    {
+        PixelMatrixBUFF[i]=new Pixel[in.nHpix];
+        for(int j=0;j<in.nHpix;j++)
+        {
+            PixelMatrixBUFF[i][j]=in(i,j);
+        }
+    }
+
+
     for(unsigned r = 0; r< REPS; ++r)
     {
 #pragma omp parallel for schedule(dynamic)
@@ -27,14 +41,20 @@ void c_omp_rotate(CImageBMP &in, double const &rotAngle, CImageBMP &out)
                 // transpose image coordinates to Cartesian coordinates
                 double X=(double)col-(double)h;
 
-                double newX=CRAS*X-SRAYS;
-                double newY=SRAS*X+CRAYS;
+                double newX=CRAS*X+SRAYS;
+                double newY=-SRAS*X+CRAYS;
 
                 // convert back from Cartesian to image coordinates
-                int rltCol=((int) newX+h);
-                int rltRow=v-(int)newY;
-                if((rltCol>=0) && (rltRow>=0) && (rltCol<in.nHpix) && (rltRow<in.nVpix)){
-                    out(rltRow, rltCol) = in(row, col);
+                int rltCol0=(int) (newX+h);
+                int rltRow0=(int)(v-newY);
+                if((rltCol0>=0) && (rltRow0>=0) && (rltCol0<in.nHpix) && (rltRow0<in.nVpix)){
+                    int rltCol1=rltCol0+1;
+                    int rltRow1=rltRow0+1;
+                    double tmpx=newX+h-rltCol0;
+                    double tmpy=v-newY-rltRow0;
+                    out(row, col).R=round((1-tmpx)*(1-tmpy)*PixelMatrixBUFF[rltRow0][rltCol0].R+(tmpx)*(1-tmpy)*PixelMatrixBUFF[rltRow0][rltCol1].R+(1-tmpx)*tmpy*PixelMatrixBUFF[rltRow1][rltCol0].R+(tmpx)*(tmpy)*PixelMatrixBUFF[rltRow1][rltCol1].R);
+                    out(row, col).G=round((1-tmpx)*(1-tmpy)*PixelMatrixBUFF[rltRow0][rltCol0].G+(tmpx)*(1-tmpy)*PixelMatrixBUFF[rltRow0][rltCol1].G+(1-tmpx)*tmpy*PixelMatrixBUFF[rltRow1][rltCol0].G+(tmpx)*(tmpy)*PixelMatrixBUFF[rltRow1][rltCol1].G);
+                    out(row, col).B=round((1-tmpx)*(1-tmpy)*PixelMatrixBUFF[rltRow0][rltCol0].B+(tmpx)*(1-tmpy)*PixelMatrixBUFF[rltRow0][rltCol1].B+(1-tmpx)*tmpy*PixelMatrixBUFF[rltRow1][rltCol0].B+(tmpx)*(tmpy)*PixelMatrixBUFF[rltRow1][rltCol1].B);
                 }
             }
         }
