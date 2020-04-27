@@ -18,15 +18,6 @@ typedef struct Pixel{
 
 } CPixel;
 
-//Define a double pixel and weight for forward rotate
-typedef struct PixelDouble{
-        double R;
-        double G;
-        double B;
-        double Weight;
-
-} CPixelDouble;
-
 class CImageBMP {
     public:
         unsigned int nVpix;       // row, height of the image

@@ -12,4 +12,13 @@ using namespace std;
 void c_omp_rotate(CImageBMP &in, double const &rotAngle, CImageBMP &out);
 vector<string> arguments(int argc, char* argv[]);
 
+//Define a double pixel and weight for forward rotate
+typedef struct PixelDouble{
+        double R;
+        double G;
+        double B;
+        double Weight;
+
+} CPixelDouble;
+
 #endif
