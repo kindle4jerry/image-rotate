@@ -7,8 +7,9 @@ CC_FLAGS = $(OPT) -fopenmp -Wall
 omp_rotate = xomp_rorate.x
 comp_omp_flip = xc_omp_rorate.x
 cfomp_rotate = xcf_omp_rorate.x
+cbomp_rotate = xcb_omp_rorate.x
 
-all: $(omp_rotate) $(comp_omp_flip) $(cfomp_rotate)
+all: $(omp_rotate) $(comp_omp_flip) $(cfomp_rotate) $(cbomp_rotate)
 
 $(omp_rotate): drv_omp_rotate.o omp_rotate.o imageBMP.o
 	@echo "----- Building $(omp_rotate) -----"
@@ -22,6 +23,11 @@ $(comp_omp_flip): drv_c_omp_rotate.o c_omp_rotate.o imageBMP.o
 
 $(cfomp_rotate): drv_cf_omp_rotate.o cf_omp_rotate.o imageBMP.o
 	@echo "----- Building $(cfomp_rotate) -----"
+	$(CC) $(CC_FLAGS) -fopenmp $^ -lpthread -o $@
+	@echo
+
+$(cbomp_rotate): drv_cb_omp_rotate.o cb_omp_rotate.o imageBMP.o
+	@echo "----- Building $(cbomp_rotate) -----"
 	$(CC) $(CC_FLAGS) -fopenmp $^ -lpthread -o $@
 	@echo
 
