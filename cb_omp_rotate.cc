@@ -27,8 +27,6 @@ void c_omp_rotate(CImageBMP &in, double const &rotAngle, CImageBMP &out)
         }
     }
 
-    // Define a pixel buff for output
-    Pixel PixelBUFF;
 
     for(unsigned r = 0; r< REPS; ++r)
     {
@@ -54,10 +52,9 @@ void c_omp_rotate(CImageBMP &in, double const &rotAngle, CImageBMP &out)
                     int rltRow1=rltRow0+1;
                     double tmpx=newX+h-rltCol0;
                     double tmpy=v-newY-rltRow0;
-                    PixelBUFF.R=round((1-tmpx)*(1-tmpy)*PixelMatrixBUFF[rltRow0][rltCol0].R+(tmpx)*(1-tmpy)*PixelMatrixBUFF[rltRow0][rltCol1].R+(1-tmpx)*tmpy*PixelMatrixBUFF[rltRow1][rltCol0].R+(tmpx)*(tmpy)*PixelMatrixBUFF[rltRow1][rltCol1].R);
-                    PixelBUFF.G=round((1-tmpx)*(1-tmpy)*PixelMatrixBUFF[rltRow0][rltCol0].G+(tmpx)*(1-tmpy)*PixelMatrixBUFF[rltRow0][rltCol1].G+(1-tmpx)*tmpy*PixelMatrixBUFF[rltRow1][rltCol0].G+(tmpx)*(tmpy)*PixelMatrixBUFF[rltRow1][rltCol1].G);
-                    PixelBUFF.B=round((1-tmpx)*(1-tmpy)*PixelMatrixBUFF[rltRow0][rltCol0].B+(tmpx)*(1-tmpy)*PixelMatrixBUFF[rltRow0][rltCol1].B+(1-tmpx)*tmpy*PixelMatrixBUFF[rltRow1][rltCol0].B+(tmpx)*(tmpy)*PixelMatrixBUFF[rltRow1][rltCol1].B);
-                    out(row,col)=PixelBUFF;
+                    out(row, col).R=round((1-tmpx)*(1-tmpy)*PixelMatrixBUFF[rltRow0][rltCol0].R+(tmpx)*(1-tmpy)*PixelMatrixBUFF[rltRow0][rltCol1].R+(1-tmpx)*tmpy*PixelMatrixBUFF[rltRow1][rltCol0].R+(tmpx)*(tmpy)*PixelMatrixBUFF[rltRow1][rltCol1].R);
+                    out(row, col).G=round((1-tmpx)*(1-tmpy)*PixelMatrixBUFF[rltRow0][rltCol0].G+(tmpx)*(1-tmpy)*PixelMatrixBUFF[rltRow0][rltCol1].G+(1-tmpx)*tmpy*PixelMatrixBUFF[rltRow1][rltCol0].G+(tmpx)*(tmpy)*PixelMatrixBUFF[rltRow1][rltCol1].G);
+                    out(row, col).B=round((1-tmpx)*(1-tmpy)*PixelMatrixBUFF[rltRow0][rltCol0].B+(tmpx)*(1-tmpy)*PixelMatrixBUFF[rltRow0][rltCol1].B+(1-tmpx)*tmpy*PixelMatrixBUFF[rltRow1][rltCol0].B+(tmpx)*(tmpy)*PixelMatrixBUFF[rltRow1][rltCol1].B);
                 }
             }
         }
