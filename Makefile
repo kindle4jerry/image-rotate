@@ -1,16 +1,17 @@
 NVCC = $(shell which nvcc)
 CC = g++-9
 OPT = -g #-O2 #-g
-NVCC_FLAGS = $(OPT) -G -Xcompiler -Wall
-CC_FLAGS = $(OPT) -fopenmp -Wall
+NVCC_FLAGS = $(OPT) -G -Xcompiler -Wall -I /opt/eigen-3.3.7/ -I /usr/include/crt
+CC_FLAGS = $(OPT) -fopenmp -Wall -I /usr/local/cuda/include -I /opt/eigen-3.3.7/
 
-omp_rotate = xomp_rorate.x
-comp_omp_flip = xc_omp_rorate.x
-cfomp_rotate = xcf_omp_rorate.x
-cbomp_rotate = xcb_omp_rorate.x
-bomp_rotate = xb_omp_rorate.x
+omp_rotate = xomp_rotate.x
+comp_omp_flip = xc_omp_rotate.x
+cfomp_rotate = xcf_omp_rotate.x
+cbomp_rotate = xcb_omp_rotate.x
+bomp_rotate = xb_omp_rotate.x
+gbomp_rotate =xgb_omp_rotate.x
 
-all: $(omp_rotate) $(comp_omp_flip) $(cfomp_rotate) $(cbomp_rotate) $(bomp_rotate)
+all: $(omp_rotate) $(comp_omp_flip) $(cfomp_rotate) $(cbomp_rotate) $(bomp_rotate) $(gbomp_rotate)
 
 $(omp_rotate): drv_omp_rotate.o omp_rotate.o imageBMP.o
 	@echo "----- Building $(omp_rotate) -----"
@@ -35,6 +36,11 @@ $(cbomp_rotate): drv_cb_omp_rotate.o cb_omp_rotate.o imageBMP.o
 $(bomp_rotate): drv_b_omp_rotate.o b_omp_rotate.o imageBMP.o
 	@echo "----- Building $(bomp_rotate) -----"
 	$(CC) $(CC_FLAGS) -fopenmp $^ -lpthread -o $@
+	@echo
+
+$(gbomp_rotate): drv_gb_omp_rotate.o gb_omp_rotate.o imageBMP.o
+	@echo "----- Building $(gbomp_rotate) -----"
+	$(NVCC) $(NVCC_FLAGS) $^ -o $@
 	@echo
 
 $(mem_omp_flip_for): drv_memOmp_imrotate_for.o memOmpRotate_for.o imageBMP.o
