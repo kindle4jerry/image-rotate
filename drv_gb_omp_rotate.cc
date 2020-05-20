@@ -44,7 +44,6 @@ int main(int argc, char** argv) {
     CImageBMP rotated(imag.nVpix, imag.nHpix);
     rotated.set_header(imag.HeaderInfo);
     Timer t;
-    //omp_set_num_threads(nThreads);
     c_omp_rotate(imag, rotAngle, rotated); 
     rotated.WriteBMP(strArgv[2]);
     double duration = t.printDiff("Execution time: ");

@@ -19,7 +19,6 @@ void c_omp_rotate(CImageBMP &in, double const &rotAngle, CImageBMP &out)
     // Initial a matrix for save the input pixel
     Pixel **PixelMatrixBUFF;
     PixelMatrixBUFF=new Pixel*[in.nVpix];
-#pragma omp parallel for schedule(dynamic)
     for(int i=0;i<in.nVpix;i++)
     {
         PixelMatrixBUFF[i]=new Pixel[in.nHpix];
@@ -32,7 +31,6 @@ void c_omp_rotate(CImageBMP &in, double const &rotAngle, CImageBMP &out)
 
     for(unsigned r = 0; r< REPS; ++r)
     {
-#pragma omp parallel for schedule(dynamic)
         for(unsigned row=0; row<in.nVpix; ++row)
         {
             double Y=(double)v-(double)row;
