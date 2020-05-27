@@ -146,7 +146,6 @@ void c_omp_rotate(CImageBMP &in, double const &rotAngle, CImageBMP &out)
             PixelMatrixBUFF[i][j].R=(char)PixelR[i*innHpix+j];
             PixelMatrixBUFF[i][j].G=(char)PixelG[i*innHpix+j];
             PixelMatrixBUFF[i][j].B=(char)PixelB[i*innHpix+j];
-            printf("%d %d %d %d %d\n",i,j,PixelMatrixBUFF[i][j].R,PixelMatrixBUFF[i][j].G,PixelMatrixBUFF[i][j].B);
             out(i,j)=PixelMatrixBUFF[i][j];
         }
     }
