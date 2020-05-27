@@ -1,7 +1,7 @@
 NVCC = $(shell which nvcc)
 CC = g++-9
 OPT = -g #-O2 #-g
-NVCC_FLAGS = $(OPT) -Xcompiler -Wall -I /opt/eigen-3.3.7/ -I /usr/include/crt
+NVCC_FLAGS = $(OPT) -Xcompiler -fopenmp -I /opt/eigen-3.3.7/ -I /usr/include/crt
 CC_FLAGS = $(OPT) -fopenmp -Wall -I /usr/local/cuda/include -I /opt/eigen-3.3.7/
 
 omp_rotate = xomp_rotate.x

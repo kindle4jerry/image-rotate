@@ -13,6 +13,7 @@
 #include <cuda.h>
 
 #include "imageBMP.hpp"
+
 using namespace std;
 
 __global__

@@ -4,8 +4,11 @@
 #include "gb_omp_rotate.hpp"
 #include <cuda_runtime.h>
 #include "timer.hpp"
+#define CHECK(res) if(res!=cudaSuccess){exit(-1);}
+cudaError_t res;
+
 __global__
-void GetImage(char *PixelINR, char *PixelING, char *PixelINB, char *PixelOUTR, char *PixelOUTG, char *PixelOUTB, int inH, int inV, int REPS_dev, double SRAS_dev, double CRAS_dev, unsigned h_dev, unsigned v_dev){
+void GetImage(int *PixelINR, int *PixelING, int *PixelINB, int *PixelOUTR, int *PixelOUTG, int *PixelOUTB, int inH, int inV, int REPS_dev, double SRAS_dev, double CRAS_dev, unsigned h_dev, unsigned v_dev){
     //for(unsigned r = 0; r< REPS_dev; ++r)
     {
         unsigned row=blockIdx.x;
@@ -35,6 +38,7 @@ void GetImage(char *PixelINR, char *PixelING, char *PixelINB, char *PixelOUTR, c
                     PixelOUTR[row*inH+col]=round((1-tmpx)*(1-tmpy)*PixelINR[rltRow0*inH+rltCol0]+(tmpx)*(1-tmpy)*PixelINR[rltRow0*inH+rltCol1]+(1-tmpx)*tmpy*PixelINR[rltRow1*inH+rltCol0]+(tmpx)*(tmpy)*PixelINR[rltRow1*inH+rltCol1]);
                     PixelOUTG[row*inH+col]=round((1-tmpx)*(1-tmpy)*PixelING[rltRow0*inH+rltCol0]+(tmpx)*(1-tmpy)*PixelING[rltRow0*inH+rltCol1]+(1-tmpx)*tmpy*PixelING[rltRow1*inH+rltCol0]+(tmpx)*(tmpy)*PixelING[rltRow1*inH+rltCol1]);
                     PixelOUTB[row*inH+col]=round((1-tmpx)*(1-tmpy)*PixelINB[rltRow0*inH+rltCol0]+(tmpx)*(1-tmpy)*PixelINB[rltRow0*inH+rltCol1]+(1-tmpx)*tmpy*PixelINB[rltRow1*inH+rltCol0]+(tmpx)*(tmpy)*PixelINB[rltRow1*inH+rltCol1]);
+                    printf("%d %d %d %d %d\n",row,col,PixelOUTR[row*inH+col],PixelOUTG[row*inH+col],PixelOUTB[row*inH+col]);
                 }
             }
         }
@@ -56,13 +60,14 @@ void c_omp_rotate(CImageBMP &in, double const &rotAngle, CImageBMP &out)
     double CRAS =cos(rotAngle)*ScaleFactor;	
     double SRAS =sin(rotAngle)*ScaleFactor;	
     t.printDiff("A1 time: ");
-    char *PixelR=(char*)malloc(sizeof(char)*innHpix*innVpix);
-    char *PixelG=(char*)malloc(sizeof(char)*innHpix*innVpix);
-    char *PixelB=(char*)malloc(sizeof(char)*innHpix*innVpix);
+    int *PixelR=(int*)malloc(sizeof(int)*innHpix*innVpix);
+    int *PixelG=(int*)malloc(sizeof(int)*innHpix*innVpix);
+    int *PixelB=(int*)malloc(sizeof(int)*innHpix*innVpix);
     t.printDiff("A2 time: ");
 
     Pixel **PixelMatrixBUFF;
     PixelMatrixBUFF=new Pixel*[innVpix];
+#pragma omp parallel for schedule(dynamic)
     for(int i=0;i<innVpix;i++)
     {
         PixelMatrixBUFF[i]=new Pixel[innHpix];
@@ -93,31 +98,31 @@ void c_omp_rotate(CImageBMP &in, double const &rotAngle, CImageBMP &out)
     
 
     size_t const IMAGEPIX = (innHpix*innVpix);
-    size_t const IMAGESIZE = 3*IMAGEPIX*sizeof(char);
+    size_t const IMAGESIZE = 3*IMAGEPIX*sizeof(int);
     size_t GPUtotalBufferSize =2*IMAGESIZE;
     t.printDiff("A3.3 time: ");
-    t.printDiff("A3.4 time: ");
     
     void *ptrGPU;			// Pointer to the bulk-allocated GPU memory
-    cudaMalloc((void**)&ptrGPU, GPUtotalBufferSize);
-    t.printDiff("A3.5 time: ");
-    char *PixelTransR=(char *)ptrGPU;
-    char *PixelTransG=PixelTransR+IMAGEPIX;
-    char *PixelTransB=PixelTransG+IMAGEPIX;
-    char *PixelTrans2R=PixelTransB+IMAGEPIX;
-    char *PixelTrans2G=PixelTrans2R+IMAGEPIX;
-    char *PixelTrans2B=PixelTrans2G+IMAGEPIX;
+    cudaStatus=cudaMalloc((void**)&ptrGPU, GPUtotalBufferSize);
+    if (cudaStatus != cudaSuccess) {
+		cout <<"\ncudaMallocfailed\n\n";
+		return;
+	}
     t.printDiff("A4 time: ");
-    /*cudaMalloc((void**)&PixelTransR, innHpix*innVpix*sizeof(int));
-    cudaMalloc((void**)&PixelTransG, innHpix*innVpix*sizeof(int));
-    cudaMalloc((void**)&PixelTransB, innHpix*innVpix*sizeof(int));
-    cudaMalloc((void**)&PixelTrans2R, innHpix*innVpix*sizeof(int));
-    cudaMalloc((void**)&PixelTrans2G, innHpix*innVpix*sizeof(int));
-    cudaMalloc((void**)&PixelTrans2B, innHpix*innVpix*sizeof(int));
-    */t.printDiff("A5 time: ");
-    cudaMemcpy((void*)(PixelTransR),(void*)(PixelR),innHpix*innVpix*sizeof(char),cudaMemcpyHostToDevice);
-    cudaMemcpy((void*)(PixelTransG),(void*)(PixelG),innHpix*innVpix*sizeof(char),cudaMemcpyHostToDevice);
-    cudaMemcpy((void*)(PixelTransB),(void*)(PixelB),innHpix*innVpix*sizeof(char),cudaMemcpyHostToDevice);
+    int *PixelTransR=(int *)ptrGPU;
+    int *PixelTransG=PixelTransR+IMAGEPIX;
+    int *PixelTransB=PixelTransG+IMAGEPIX;
+    int *PixelTrans2R=PixelTransB+IMAGEPIX;
+    int *PixelTrans2G=PixelTrans2R+IMAGEPIX;
+    int *PixelTrans2B=PixelTrans2G+IMAGEPIX;
+    t.printDiff("A5 time: ");
+    cudaMemcpy((void*)(PixelTransR),(void*)(PixelR),innHpix*innVpix*sizeof(int),cudaMemcpyHostToDevice);
+    cudaMemcpy((void*)(PixelTransG),(void*)(PixelG),innHpix*innVpix*sizeof(int),cudaMemcpyHostToDevice);
+    cudaStatus=cudaMemcpy((void*)(PixelTransB),(void*)(PixelB),innHpix*innVpix*sizeof(int),cudaMemcpyHostToDevice);
+    if (cudaStatus != cudaSuccess) {
+		cout <<"\ncudaMallocfailed\n\n";
+		return;
+	}
     t.printDiff("A6 time: ");
 
     dim3 grid(innVpix,1,1);
@@ -128,12 +133,12 @@ void c_omp_rotate(CImageBMP &in, double const &rotAngle, CImageBMP &out)
     GetImage<<<grid,thread>>>(PixelTransR,PixelTransG,PixelTransB,PixelTrans2R,PixelTrans2G,PixelTrans2B,innHpix,innVpix,REPS,SRAS,CRAS,h, v);
     t.printDiff("GPU kernel time: ");
 
-    cudaMemcpy((void*)(PixelR), (void*)(PixelTrans2R),innHpix*innVpix*sizeof(char), cudaMemcpyDeviceToHost);
-    cudaMemcpy((void*)(PixelG), (void*)(PixelTrans2G),innHpix*innVpix*sizeof(char), cudaMemcpyDeviceToHost);
-    cudaMemcpy((void*)(PixelB), (void*)(PixelTrans2B),innHpix*innVpix*sizeof(char), cudaMemcpyDeviceToHost);
+    cudaMemcpy((void*)(PixelR), (void*)(PixelTrans2R),innHpix*innVpix*sizeof(int), cudaMemcpyDeviceToHost);
+    cudaMemcpy((void*)(PixelG), (void*)(PixelTrans2G),innHpix*innVpix*sizeof(int), cudaMemcpyDeviceToHost);
+    cudaMemcpy((void*)(PixelB), (void*)(PixelTrans2B),innHpix*innVpix*sizeof(int), cudaMemcpyDeviceToHost);
     t.printDiff("A8 time: ");
 
-//#pragma omp parallel for schedule(dynamic)
+#pragma omp parallel for schedule(dynamic)
     for(unsigned i=0;i<innVpix;i++)
     {
         for(unsigned j=0;j<innHpix;j++)
@@ -141,6 +146,7 @@ void c_omp_rotate(CImageBMP &in, double const &rotAngle, CImageBMP &out)
             PixelMatrixBUFF[i][j].R=(char)PixelR[i*innHpix+j];
             PixelMatrixBUFF[i][j].G=(char)PixelG[i*innHpix+j];
             PixelMatrixBUFF[i][j].B=(char)PixelB[i*innHpix+j];
+            printf("%d %d %d %d %d\n",i,j,PixelMatrixBUFF[i][j].R,PixelMatrixBUFF[i][j].G,PixelMatrixBUFF[i][j].B);
             out(i,j)=PixelMatrixBUFF[i][j];
         }
     }
