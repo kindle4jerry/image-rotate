@@ -6,18 +6,19 @@
 #include <omp.h>
 #include <cmath>
 
+#include <cuda_runtime.h>
+#include <device_launch_parameters.h>
+#include <iostream>
+#include <ctype.h>
+#include <cuda.h>
+
 #include "imageBMP.hpp"
 using namespace std;
 
+__global__
+void GetImage();
+
 void c_omp_rotate(CImageBMP &in, double const &rotAngle, CImageBMP &out);
 vector<string> arguments(int argc, char* argv[]);
-
-//Define a double pixel but not weight for backward rotate
-typedef struct PixelDouble{
-        double R;
-        double G;
-        double B;
-
-} CPixelDouble;
 
 #endif
