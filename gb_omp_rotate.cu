@@ -72,20 +72,43 @@ void c_omp_rotate(CImageBMP &in, double const &rotAngle, CImageBMP &out)
         }
     }
     t.printDiff("A3 time: ");
-    int *PixelTransR=NULL;
-    int *PixelTransG=NULL;
-    int *PixelTransB=NULL;
-    int *PixelTrans2R=NULL;
-    int *PixelTrans2G=NULL;
-    int *PixelTrans2B=NULL;
+    int NumGPUs = 0;
+    cudaGetDeviceCount(&NumGPUs);
+    if (NumGPUs == 0){
+		cout <<"\nNo CUDA Device is available\n\n";
+		return; 
+    }
+    cudaError_t cudaStatus = cudaSetDevice(0);
+	if (cudaStatus != cudaSuccess) {
+		cout <<"\ncudaSetDevice failed!  Do you have a CUDA-capable GPU installed?\n\n";
+		return;
+	}
+	
+    cudaDeviceProp GPUprop;
+    cudaGetDeviceProperties(&GPUprop, 0);
+    
+
+    size_t const IMAGEPIX = (innHpix*innVpix);
+    size_t const IMAGESIZE = 3*IMAGEPIX*sizeof(int);
+    size_t GPUtotalBufferSize =2*IMAGESIZE;
+
+    void *ptrGPU;			// Pointer to the bulk-allocated GPU memory
+    cudaMalloc((void**)&ptrGPU, GPUtotalBufferSize);
+    t.printDiff("A3.5 time: ");
+    int *PixelTransR=(int *)ptrGPU;
+    int *PixelTransG=PixelTransR+IMAGEPIX;
+    int *PixelTransB=PixelTransG+IMAGEPIX;
+    int *PixelTrans2R=PixelTransB+IMAGEPIX;
+    int *PixelTrans2G=PixelTrans2R+IMAGEPIX;
+    int *PixelTrans2B=PixelTrans2G+IMAGEPIX;
     t.printDiff("A4 time: ");
-    cudaMalloc((void**)&PixelTransR, innHpix*innVpix*sizeof(int));
+    /*cudaMalloc((void**)&PixelTransR, innHpix*innVpix*sizeof(int));
     cudaMalloc((void**)&PixelTransG, innHpix*innVpix*sizeof(int));
     cudaMalloc((void**)&PixelTransB, innHpix*innVpix*sizeof(int));
     cudaMalloc((void**)&PixelTrans2R, innHpix*innVpix*sizeof(int));
     cudaMalloc((void**)&PixelTrans2G, innHpix*innVpix*sizeof(int));
     cudaMalloc((void**)&PixelTrans2B, innHpix*innVpix*sizeof(int));
-    t.printDiff("A5 time: ");
+    */t.printDiff("A5 time: ");
     cudaMemcpy((void*)(PixelTransR),(void*)(PixelR),innHpix*innVpix*sizeof(int),cudaMemcpyHostToDevice);
     cudaMemcpy((void*)(PixelTransG),(void*)(PixelG),innHpix*innVpix*sizeof(int),cudaMemcpyHostToDevice);
     cudaMemcpy((void*)(PixelTransB),(void*)(PixelB),innHpix*innVpix*sizeof(int),cudaMemcpyHostToDevice);

@@ -206,12 +206,14 @@ int launch_edge_kernel(CImageBMP &image, unsigned const ThreshLo, unsigned const
 	cudaEventCreate(&time3);		cudaEventCreate(&time4);
 
 	cudaEventRecord(time1, 0);		// Time stamp at the start of the GPU transfer
-    // Allocate GPU buffer for the input and output images and the intermediate result
+	
+	Timer t;
+	// Allocate GPU buffer for the input and output images and the intermediate result
     size_t const IMAGEPIX  = (image.nHpix*image.nVpix);
     size_t const IMAGESIZE = IMAGEPIX* sizeof(CPixel); //image.nHpix * image.nVpix * sizeof(CPixel); 
     size_t GPUtotalBufferSize = 4 * sizeof(double)*IMAGEPIX + 2 * sizeof(unsigned char)*IMAGESIZE;
 	
-	Timer t;
+	
 	void *ptrGPU;			// Pointer to the bulk-allocated GPU memory
     cudaStatus = cudaMalloc((void**)&ptrGPU, GPUtotalBufferSize);
     if (cudaStatus != cudaSuccess) {
