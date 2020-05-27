@@ -61,16 +61,20 @@ void c_omp_rotate(CImageBMP &in, double const &rotAngle, CImageBMP &out)
     char *PixelB=(char*)malloc(sizeof(char)*innHpix*innVpix);
     t.printDiff("A2 time: ");
 
-//#pragma omp parallel for schedule(dynamic)
-    for(unsigned i=0;i<innVpix;i++)
+    Pixel **PixelMatrixBUFF;
+    PixelMatrixBUFF=new Pixel*[innVpix];
+    for(int i=0;i<innVpix;i++)
     {
-        for(unsigned j=0;j<innHpix;j++)
+        PixelMatrixBUFF[i]=new Pixel[innHpix];
+        for(int j=0;j<innHpix;j++)
         {
-            PixelR[i*innHpix+j]=in(i,j).R;
-            PixelG[i*innHpix+j]=in(i,j).G;
-            PixelB[i*innHpix+j]=in(i,j).B;
+            PixelMatrixBUFF[i][j]=in(i,j);
+            PixelR[i*innHpix+j]=PixelMatrixBUFF[i][j].R;
+            PixelG[i*innHpix+j]=PixelMatrixBUFF[i][j].G;
+            PixelB[i*innHpix+j]=PixelMatrixBUFF[i][j].B;
         }
     }
+
     t.printDiff("A3 time: ");
     int NumGPUs = 0;
     cudaGetDeviceCount(&NumGPUs);
@@ -128,14 +132,16 @@ void c_omp_rotate(CImageBMP &in, double const &rotAngle, CImageBMP &out)
     cudaMemcpy((void*)(PixelG), (void*)(PixelTrans2G),innHpix*innVpix*sizeof(char), cudaMemcpyDeviceToHost);
     cudaMemcpy((void*)(PixelB), (void*)(PixelTrans2B),innHpix*innVpix*sizeof(char), cudaMemcpyDeviceToHost);
     t.printDiff("A8 time: ");
+
 //#pragma omp parallel for schedule(dynamic)
     for(unsigned i=0;i<innVpix;i++)
     {
         for(unsigned j=0;j<innHpix;j++)
         {
-            out(i,j).R=(char)PixelR[i*innHpix+j];
-            out(i,j).G=(char)PixelG[i*innHpix+j];
-            out(i,j).B=(char)PixelB[i*innHpix+j];
+            PixelMatrixBUFF[i][j].R=(char)PixelR[i*innHpix+j];
+            PixelMatrixBUFF[i][j].G=(char)PixelG[i*innHpix+j];
+            PixelMatrixBUFF[i][j].B=(char)PixelB[i*innHpix+j];
+            out(i,j)=PixelMatrixBUFF[i][j];
         }
     }
     t.printDiff("A9 time: ");
