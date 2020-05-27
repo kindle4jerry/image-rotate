@@ -38,7 +38,6 @@ void GetImage(int *PixelINR, int *PixelING, int *PixelINB, int *PixelOUTR, int *
                     PixelOUTR[row*inH+col]=round((1-tmpx)*(1-tmpy)*PixelINR[rltRow0*inH+rltCol0]+(tmpx)*(1-tmpy)*PixelINR[rltRow0*inH+rltCol1]+(1-tmpx)*tmpy*PixelINR[rltRow1*inH+rltCol0]+(tmpx)*(tmpy)*PixelINR[rltRow1*inH+rltCol1]);
                     PixelOUTG[row*inH+col]=round((1-tmpx)*(1-tmpy)*PixelING[rltRow0*inH+rltCol0]+(tmpx)*(1-tmpy)*PixelING[rltRow0*inH+rltCol1]+(1-tmpx)*tmpy*PixelING[rltRow1*inH+rltCol0]+(tmpx)*(tmpy)*PixelING[rltRow1*inH+rltCol1]);
                     PixelOUTB[row*inH+col]=round((1-tmpx)*(1-tmpy)*PixelINB[rltRow0*inH+rltCol0]+(tmpx)*(1-tmpy)*PixelINB[rltRow0*inH+rltCol1]+(1-tmpx)*tmpy*PixelINB[rltRow1*inH+rltCol0]+(tmpx)*(tmpy)*PixelINB[rltRow1*inH+rltCol1]);
-                    printf("%d %d %d %d %d\n",row,col,PixelOUTR[row*inH+col],PixelOUTG[row*inH+col],PixelOUTB[row*inH+col]);
                 }
             }
         }
