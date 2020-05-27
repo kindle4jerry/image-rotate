@@ -16,6 +16,8 @@ vector<string> arguments(int argc, char* argv[])
 
 int main(int argc, char **argv)
 {
+    cudaSetDevice(0);
+    cudaFree(0);
     unsigned 	ThreshLo=50, ThreshHi=100;		// "Edge" vs. "No Edge" thresholds
     vector<string> strArgv = arguments(argc, argv);
     unsigned nThdsPerBlk=256;

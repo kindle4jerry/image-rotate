@@ -32,152 +32,11 @@ void bw_kernel(double *bwMat, unsigned char *gpuMat, unsigned nHpix)
 	bwMat[pixIdx] = (R+G+B)/3.0;
 }
 
-__device__
-double Gauss[5][5] = {	{ 2, 4,  5,  4,  2 },
-						{ 4, 9,  12, 9,  4 },
-						{ 5, 12, 15, 12, 5 },
-						{ 4, 9,  12, 9,  4 },
-						{ 2, 4,  5,  4,  2 } };
-// Kernel that calcsize_tates a Gauss image from the B&W image
-// ressize_tting image has a double type for each pixel position
-__global__
-void gauss_kernel(double *gaussMat, double *bwMat, unsigned nHpix, unsigned nVpix)
-{
-	unsigned nThdsPerBlk = blockDim.x;
-	unsigned bIdx = blockIdx.x;
-	unsigned tIdx = threadIdx.x;
-	unsigned gtIdx = nThdsPerBlk * bIdx + tIdx;
-
-	unsigned BlkPerRow = un_ceil(nHpix, nThdsPerBlk);
-	int rowBgn = bIdx / BlkPerRow;
-	int colBgn = gtIdx - rowBgn*BlkPerRow*nThdsPerBlk;
-	if (colBgn >= nHpix) return;			// col out of range
-
-	unsigned pixIdx = rowBgn * nHpix + colBgn;
-	if ((rowBgn<2) || (rowBgn>nVpix - 3) || (colBgn<2) || (colBgn>nHpix - 3)){
-		gaussMat[pixIdx] = 0.0;
-		return;
-	}else{
-		double G = 0.0;
-		for (int i = -2; i <= 2; i++){
-			for (int j = -2; j <= 2; j++){
-				int row = rowBgn + i;
-				int col = colBgn + j;
-				int indx = row*nHpix + col;
-				G += (bwMat[indx] * Gauss[i + 2][j + 2]);
-			}
-		}
-		gaussMat[pixIdx] = G / 159.00;
-	}
-}
-
-
-__device__
-double Gx[3][3] = { { -1, 0, 1 },
-					{ -2, 0, 2 },
-					{ -1, 0, 1 } };
-__device__
-double Gy[3][3] = { { -1, -2, -1 },
-					{ 0, 0, 0 },
-					{ 1, 2, 1 } };
-// Kernel that calcsize_tates Gradient, Theta from the Gauss image
-// ressize_tting image has a double type for each pixel position
-__global__
-void sobel_kernel(double *gradMat, double *thetaMat, double *gaussMat, unsigned nHpix, unsigned nVpix)
-{
-	unsigned nThdsPerBlk = blockDim.x;
-	unsigned bIdx = blockIdx.x;
-	unsigned tIdx = threadIdx.x;
-	unsigned gtIdx = nThdsPerBlk * bIdx + tIdx;
-
-	unsigned BlkPerRow = un_ceil(nHpix, nThdsPerBlk);
-	int rowBgn = bIdx / BlkPerRow;
-	int colBgn = gtIdx - rowBgn*BlkPerRow*nThdsPerBlk;
-	if (colBgn >= nHpix) return;			// col out of range
-
-	unsigned pixIdx = rowBgn * nHpix + colBgn;
-	if ((rowBgn<1) || (rowBgn>nVpix - 2) || (colBgn<1) || (colBgn>nHpix - 2)){
-		gradMat[pixIdx] = 0.0;
-		thetaMat[pixIdx] = 0.0;
-		return;
-	}else{
-		double GX = 0.0;  double GY = 0.0;
-		for (int i = -1; i <= 1; i++){
-			for (int j = -1; j <= 1; j++){
-				int row = rowBgn + i;
-				int col = colBgn + j;
-				int indx = row*nHpix + col;
-				GX += (gaussMat[indx] * Gx[i + 1][j + 1]);
-				GY += (gaussMat[indx] * Gy[i + 1][j + 1]);
-			}
-		}
-		gradMat[pixIdx] = sqrt(GX*GX + GY*GY);
-		thetaMat[pixIdx] = atan(GX / GY)*180.0 / PI;
-	}
-}
-
-
-// Kernel that calcsize_tates the threshold image from Gradient, Theta
-// ressize_tting image has an RGB for each pixel, same RGB for each pixel
-__global__
-void prune_kernel(unsigned char *edgeImg, double *gradMat, double *thetaMat, unsigned nHpix, unsigned nVpix, unsigned ThreshLo, unsigned ThreshHi)
-{
-	unsigned nThdsPerBlk = blockDim.x;
-	unsigned bIdx = blockIdx.x;
-	unsigned tIdx = threadIdx.x;
-	unsigned gtIdx = nThdsPerBlk * bIdx + tIdx;
-
-	unsigned BlkPerRow = un_ceil(nHpix, nThdsPerBlk);
-	unsigned RowBytes = (nHpix * 3 + 3) & (~3);
-	int rowBgn = bIdx / BlkPerRow;
-	int colBgn = gtIdx - rowBgn*BlkPerRow*nThdsPerBlk;
-	if (colBgn >= nHpix) return;			// col out of range
-
-	unsigned imgIdx = rowBgn * RowBytes + 3 * colBgn;
-	unsigned pixIdx = rowBgn * nHpix + colBgn;
-	if ((rowBgn<1) || (rowBgn>nVpix - 2) || (colBgn<1) || (colBgn>nHpix - 2)){
-		edgeImg[imgIdx] = EFALSE;
-		edgeImg[imgIdx + 1] = EFALSE;
-		edgeImg[imgIdx + 2] = EFALSE;
-		return;
-	}else{
-	unsigned char ePix; // edge or not
-	double L, H, G, T;
-		L = (double)ThreshLo;		H = (double)ThreshHi;
-		G = gradMat[pixIdx];
-		ePix = EFALSE;
-		if (G <= L){						// no edge
-			ePix = EFALSE;
-		}else if (G >= H){					// edge
-			ePix = ETRUE;
-		}else{
-			T = thetaMat[pixIdx];
-			if ((T<-67.5) || (T>67.5)){
-				// Look at left and right: [row][col-1]  and  [row][col+1]
-				ePix = ((gradMat[pixIdx - 1]>H) || (gradMat[pixIdx + 1]>H)) ? ETRUE : EFALSE;
-			}
-			else if ((T >= -22.5) && (T <= 22.5)){
-				// Look at top and bottom: [row-1][col]  and  [row+1][col]
-				ePix = ((gradMat[pixIdx - nHpix]>H) || (gradMat[pixIdx + nHpix]>H)) ? ETRUE : EFALSE;
-			}
-			else if ((T>22.5) && (T <= 67.5)){
-				// Look at upper right, lower left: [row-1][col+1]  and  [row+1][col-1]
-				ePix = ((gradMat[pixIdx - nHpix + 1]>H) || (gradMat[pixIdx + nHpix - 1]>H)) ? ETRUE : EFALSE;
-			}
-			else if ((T >= -67.5) && (T<-22.5)){
-				// Look at upper left, lower right: [row-1][col-1]  and  [row+1][col+1]
-				ePix = ((gradMat[pixIdx - nHpix - 1]>H) || (gradMat[pixIdx + nHpix + 1]>H)) ? ETRUE : EFALSE;
-			}
-		}
-		edgeImg[imgIdx] = ePix;
-		edgeImg[imgIdx + 1] = ePix;
-		edgeImg[imgIdx + 2] = ePix;
-	}
-}
 
 int launch_edge_kernel(CImageBMP &image, unsigned const ThreshLo, unsigned const ThreshHi, unsigned const nThdsPerBlk) 
 {
-    // Choose which GPU to run on, change this on a msize_tti-GPU system.
+	Timer t;
+	// Choose which GPU to run on, change this on a msize_tti-GPU system.
 	int NumGPUs = 0;
 	cudaGetDeviceCount(&NumGPUs);
 	if (NumGPUs == 0){
@@ -207,12 +66,12 @@ int launch_edge_kernel(CImageBMP &image, unsigned const ThreshLo, unsigned const
 
 	cudaEventRecord(time1, 0);		// Time stamp at the start of the GPU transfer
 	
-	Timer t;
+	
 	// Allocate GPU buffer for the input and output images and the intermediate result
     size_t const IMAGEPIX  = (image.nHpix*image.nVpix);
     size_t const IMAGESIZE = IMAGEPIX* sizeof(CPixel); //image.nHpix * image.nVpix * sizeof(CPixel); 
-    size_t GPUtotalBufferSize = 4 * sizeof(double)*IMAGEPIX + 2 * sizeof(unsigned char)*IMAGESIZE;
-	
+    size_t GPUtotalBufferSize = 2 * sizeof(unsigned char)*IMAGESIZE;
+	t.printDiff("Init time: ");
 	
 	void *ptrGPU;			// Pointer to the bulk-allocated GPU memory
     cudaStatus = cudaMalloc((void**)&ptrGPU, GPUtotalBufferSize);
@@ -225,7 +84,7 @@ int launch_edge_kernel(CImageBMP &image, unsigned const ThreshLo, unsigned const
 	imgGPU			= (unsigned char *)ptrGPU;
 	ptrImgGPU	= imgGPU + IMAGESIZE;
 
-    double  *GPUBWImg, *GPUGaussImg, *gradGPU, *thetaGPU;	
+    double  *GPUBWImg, *GPUGaussImg, *gradGPU, *thetaGPU;
 	GPUBWImg	= (double *)(ptrImgGPU + IMAGESIZE);
 	GPUGaussImg	= GPUBWImg + IMAGEPIX;
 	gradGPU		= GPUGaussImg + IMAGEPIX;
@@ -251,18 +110,18 @@ int launch_edge_kernel(CImageBMP &image, unsigned const ThreshLo, unsigned const
 	unsigned GPUDataTfrBW, GPUDataTfrGauss, GPUDataTfrSobel, GPUDataTfrThresh,GPUDataTfrKernel, GPUDataTfrTotal;
 	GPUDataTfrBW = sizeof(double)*IMAGEPIX + sizeof(unsigned char)*IMAGESIZE;
 
-	gauss_kernel <<< nBlks, nThdsPerBlk >>> (GPUGaussImg, GPUBWImg, image.nHpix, image.nVpix);
-	if ((cudaStatus = cudaDeviceSynchronize()) != cudaSuccess) return 1; //goto KERNELERROR; 
+	//gauss_kernel <<< nBlks, nThdsPerBlk >>> (GPUGaussImg, GPUBWImg, image.nHpix, image.nVpix);
+	//if ((cudaStatus = cudaDeviceSynchronize()) != cudaSuccess) return 1; //goto KERNELERROR; 
 	cudaEventRecord(time2Gauss, 0);		// Time stamp after Gauss image calcsize_tation
 	GPUDataTfrGauss = 2*sizeof(double)*IMAGEPIX;
 
-	sobel_kernel <<< nBlks, nThdsPerBlk >>> (gradGPU, thetaGPU, GPUGaussImg, image.nHpix, image.nVpix);
-	if ((cudaStatus = cudaDeviceSynchronize()) != cudaSuccess) return 1; //goto KERNELERROR; 
+	//sobel_kernel <<< nBlks, nThdsPerBlk >>> (gradGPU, thetaGPU, GPUGaussImg, image.nHpix, image.nVpix);
+	//if ((cudaStatus = cudaDeviceSynchronize()) != cudaSuccess) return 1; //goto KERNELERROR; 
 	cudaEventRecord(time2Sobel, 0);		// Time stamp after Gradient, Theta computation
 	GPUDataTfrSobel = 3 * sizeof(double)*IMAGEPIX;
 
-	prune_kernel <<< nBlks, nThdsPerBlk >>> (ptrImgGPU, gradGPU, thetaGPU, image.nHpix, image.nVpix, ThreshLo, ThreshHi);
-	if ((cudaStatus = cudaDeviceSynchronize()) != cudaSuccess) return 1; //goto KERNELERROR;
+	//prune_kernel <<< nBlks, nThdsPerBlk >>> (ptrImgGPU, gradGPU, thetaGPU, image.nHpix, image.nVpix, ThreshLo, ThreshHi);
+	//if ((cudaStatus = cudaDeviceSynchronize()) != cudaSuccess) return 1; //goto KERNELERROR;
 	GPUDataTfrThresh = sizeof(double)*IMAGEPIX + sizeof(unsigned char)*IMAGESIZE;
 	GPUDataTfrKernel = GPUDataTfrBW + GPUDataTfrGauss + GPUDataTfrSobel + GPUDataTfrThresh;
 	GPUDataTfrTotal = GPUDataTfrKernel + 2 * IMAGESIZE;
