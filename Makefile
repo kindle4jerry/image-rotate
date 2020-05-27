@@ -12,7 +12,7 @@ bomp_rotate = xb_omp_rotate.x
 gbomp_rotate =xgb_omp_rotate.x
 edgeG1 = xcudaEdge.x
 
-all: $(omp_rotate) $(comp_omp_flip) $(cfomp_rotate) $(cbomp_rotate) $(bomp_rotate) $(gbomp_rotate) $(edgeG1)
+all: $(omp_rotate) $(comp_omp_flip) $(cfomp_rotate) $(cbomp_rotate) $(bomp_rotate) $(gbomp_rotate)
 
 $(omp_rotate): drv_omp_rotate.o omp_rotate.o imageBMP.o
 	@echo "----- Building $(omp_rotate) -----"
@@ -41,11 +41,6 @@ $(bomp_rotate): drv_b_omp_rotate.o b_omp_rotate.o imageBMP.o
 
 $(gbomp_rotate): drv_gb_omp_rotate.o gb_omp_rotate.o imageBMP.o
 	@echo "----- Building $(gbomp_rotate) -----"
-	$(NVCC) $(NVCC_FLAGS) $^ -o $@
-	@echo
-
-$(edgeG1): drv_cuda_edge.o cuda_edge.o imageBMP.o
-	@echo "----- Building $(edgeG1) -----"
 	$(NVCC) $(NVCC_FLAGS) $^ -o $@
 	@echo
 
