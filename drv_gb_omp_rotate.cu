@@ -43,6 +43,8 @@ int main(int argc, char** argv) {
     imag.ReadBMP(strArgv[1]);
     CImageBMP rotated(imag.nVpix, imag.nHpix);
     rotated.set_header(imag.HeaderInfo);
+    void *zeroGPU;
+    cudaMalloc((void**)&zeroGPU, 1);
     Timer t;
     c_omp_rotate(imag, rotAngle, rotated); 
     rotated.WriteBMP(strArgv[2]);

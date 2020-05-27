@@ -3,9 +3,6 @@
  */
 #include "gb_omp_rotate.hpp"
 #include <cuda_runtime.h>
-#include "timer.hpp"
-#define CHECK(res) if(res!=cudaSuccess){exit(-1);}
-cudaError_t res;
 
 __global__
 void GetImage(int *PixelINR, int *PixelING, int *PixelINB, int *PixelOUTR, int *PixelOUTG, int *PixelOUTB, int inH, int inV, int REPS_dev, double SRAS_dev, double CRAS_dev, unsigned h_dev, unsigned v_dev){
@@ -46,7 +43,6 @@ void GetImage(int *PixelINR, int *PixelING, int *PixelINB, int *PixelOUTR, int *
 }
 void c_omp_rotate(CImageBMP &in, double const &rotAngle, CImageBMP &out)
 {
-    Timer t;
     double dH=(double)in.nHpix;
     double dV=(double)in.nVpix;
     double diagonal=sqrt(dH*dH+dV*dV);
@@ -58,11 +54,10 @@ void c_omp_rotate(CImageBMP &in, double const &rotAngle, CImageBMP &out)
 
     double CRAS =cos(rotAngle)*ScaleFactor;	
     double SRAS =sin(rotAngle)*ScaleFactor;	
-    t.printDiff("A1 time: ");
+
     int *PixelR=(int*)malloc(sizeof(int)*innHpix*innVpix);
     int *PixelG=(int*)malloc(sizeof(int)*innHpix*innVpix);
     int *PixelB=(int*)malloc(sizeof(int)*innHpix*innVpix);
-    t.printDiff("A2 time: ");
 
     Pixel **PixelMatrixBUFF;
     PixelMatrixBUFF=new Pixel*[innVpix];
@@ -78,64 +73,33 @@ void c_omp_rotate(CImageBMP &in, double const &rotAngle, CImageBMP &out)
             PixelB[i*innHpix+j]=PixelMatrixBUFF[i][j].B;
         }
     }
-
-    t.printDiff("A3 time: ");
-    int NumGPUs = 0;
-    cudaGetDeviceCount(&NumGPUs);
-    if (NumGPUs == 0){
-		cout <<"\nNo CUDA Device is available\n\n";
-		return; 
-    }
-    cudaError_t cudaStatus = cudaSetDevice(0);
-	if (cudaStatus != cudaSuccess) {
-		cout <<"\ncudaSetDevice failed!  Do you have a CUDA-capable GPU installed?\n\n";
-		return;
-	}
-	
-    cudaDeviceProp GPUprop;
-    cudaGetDeviceProperties(&GPUprop, 0);
     
 
     size_t const IMAGEPIX = (innHpix*innVpix);
     size_t const IMAGESIZE = 3*IMAGEPIX*sizeof(int);
     size_t GPUtotalBufferSize =2*IMAGESIZE;
-    t.printDiff("A3.3 time: ");
     
     void *ptrGPU;			// Pointer to the bulk-allocated GPU memory
-    cudaStatus=cudaMalloc((void**)&ptrGPU, GPUtotalBufferSize);
-    if (cudaStatus != cudaSuccess) {
-		cout <<"\ncudaMallocfailed\n\n";
-		return;
-	}
-    t.printDiff("A4 time: ");
+    cudaMalloc((void**)&ptrGPU, GPUtotalBufferSize);
     int *PixelTransR=(int *)ptrGPU;
     int *PixelTransG=PixelTransR+IMAGEPIX;
     int *PixelTransB=PixelTransG+IMAGEPIX;
     int *PixelTrans2R=PixelTransB+IMAGEPIX;
     int *PixelTrans2G=PixelTrans2R+IMAGEPIX;
     int *PixelTrans2B=PixelTrans2G+IMAGEPIX;
-    t.printDiff("A5 time: ");
     cudaMemcpy((void*)(PixelTransR),(void*)(PixelR),innHpix*innVpix*sizeof(int),cudaMemcpyHostToDevice);
     cudaMemcpy((void*)(PixelTransG),(void*)(PixelG),innHpix*innVpix*sizeof(int),cudaMemcpyHostToDevice);
-    cudaStatus=cudaMemcpy((void*)(PixelTransB),(void*)(PixelB),innHpix*innVpix*sizeof(int),cudaMemcpyHostToDevice);
-    if (cudaStatus != cudaSuccess) {
-		cout <<"\ncudaMallocfailed\n\n";
-		return;
-	}
-    t.printDiff("A6 time: ");
+    cudaMemcpy((void*)(PixelTransB),(void*)(PixelB),innHpix*innVpix*sizeof(int),cudaMemcpyHostToDevice);
 
     dim3 grid(innVpix,1,1);
     dim3 thread(innHpix,1,1);
-    t.printDiff("A7 time: ");
     
     
     GetImage<<<grid,thread>>>(PixelTransR,PixelTransG,PixelTransB,PixelTrans2R,PixelTrans2G,PixelTrans2B,innHpix,innVpix,REPS,SRAS,CRAS,h, v);
-    t.printDiff("GPU kernel time: ");
 
     cudaMemcpy((void*)(PixelR), (void*)(PixelTrans2R),innHpix*innVpix*sizeof(int), cudaMemcpyDeviceToHost);
     cudaMemcpy((void*)(PixelG), (void*)(PixelTrans2G),innHpix*innVpix*sizeof(int), cudaMemcpyDeviceToHost);
     cudaMemcpy((void*)(PixelB), (void*)(PixelTrans2B),innHpix*innVpix*sizeof(int), cudaMemcpyDeviceToHost);
-    t.printDiff("A8 time: ");
 
 #pragma omp parallel for schedule(dynamic)
     for(unsigned i=0;i<innVpix;i++)
@@ -148,7 +112,6 @@ void c_omp_rotate(CImageBMP &in, double const &rotAngle, CImageBMP &out)
             out(i,j)=PixelMatrixBUFF[i][j];
         }
     }
-    t.printDiff("A9 time: ");
     return ; 
 }
 
