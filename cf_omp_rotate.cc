@@ -85,7 +85,7 @@ void c_omp_rotate(CImageBMP &in, double const &rotAngle, CImageBMP &out)
             }
         }
     }
-#pragma omp parallel for schedule(dynamic)
+    
     for(int i=0;i<in.nVpix;i++)
     {
         for(int j=0;j<in.nHpix;j++)

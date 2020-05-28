@@ -61,7 +61,7 @@ void c_omp_rotate(CImageBMP &in, double const &rotAngle, CImageBMP &out)
 
     Pixel **PixelMatrixBUFF;
     PixelMatrixBUFF=new Pixel*[innVpix];
-#pragma omp parallel for schedule(dynamic)
+
     for(int i=0;i<innVpix;i++)
     {
         PixelMatrixBUFF[i]=new Pixel[innHpix];
@@ -101,7 +101,6 @@ void c_omp_rotate(CImageBMP &in, double const &rotAngle, CImageBMP &out)
     cudaMemcpy((void*)(PixelG), (void*)(PixelTrans2G),innHpix*innVpix*sizeof(int), cudaMemcpyDeviceToHost);
     cudaMemcpy((void*)(PixelB), (void*)(PixelTrans2B),innHpix*innVpix*sizeof(int), cudaMemcpyDeviceToHost);
 
-#pragma omp parallel for schedule(dynamic)
     for(unsigned i=0;i<innVpix;i++)
     {
         for(unsigned j=0;j<innHpix;j++)
